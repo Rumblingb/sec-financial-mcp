@@ -1,0 +1,17 @@
+# Smithery deployment configuration for SEC Financial Data MCP Server
+# https://smithery.ai/docs/deployments
+
+startCommand:
+  type: stdio
+  configSchema:
+    # No configuration variables needed; the server uses the SEC EDGAR public API
+    # with a hardcoded User-Agent email address.
+    type: object
+    properties: {}
+    required: []
+  commandFunction:
+    # A shell command that starts the MCP server over stdio.
+    type: stdio
+    command: python
+    args:
+      - server.py
