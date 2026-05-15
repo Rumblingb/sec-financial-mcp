@@ -6,6 +6,10 @@ company facts, submission history, and financial metrics.
 
 Uses the public SEC EDGAR API with required User-Agent header.
 Rate limit: 10 requests/second (recommended: 1 request/second).
+
+Usage:
+  python3 server.py                    # Free tier (50 calls/instance)
+  python3 server.py --pro-key PROL_XXX  # Pro tier (unlimited)
 """
 
 from typing import Any
@@ -21,6 +25,47 @@ USER_AGENT = "AgentPay MCP (jackpost1388@wshu.net)"
 BASE_URL = "https://data.sec.gov"
 SEARCH_URL = "https://www.sec.gov/cgi-bin/browse-edgar"
 HEADERS = {"User-Agent": USER_AGENT}
+
+# ── Rate Limiting & Pro Key ────────────────────────────────────────────────
+
+FREE_LIMIT = 50
+PRO_KEYS = {"PROL_AGENTPAY_DEMO": "demo"}  # Demo key for testing
+
+# Parse --pro-key from command line
+import sys
+PRO_KEY = None
+for i, arg in enumerate(sys.argv):
+    if arg == "--pro-key" and i + 1 < len(sys.argv):
+        PRO_KEY = sys.argv[i + 1]
+        break
+
+IS_PRO = PRO_KEY in PRO_KEYS
+call_counter = 0
+
+STRIPE_LINK = "https://buy.stripe.com/4gM6oJa1xck44vCenp1oI0p"  # $19/mo (SEC EDGAR MCP Pro)
+
+def check_rate_limit():
+    """Check if free tier has exceeded limit. Returns error dict or None."""
+    global call_counter
+    if IS_PRO:
+        return None
+    call_counter += 1
+    if call_counter > FREE_LIMIT:
+        remaining = call_counter - FREE_LIMIT
+        return {
+            "error": f"Free tier limit reached ({FREE_LIMIT} calls). Upgrade to Pro for unlimited access.",
+            "isError": True,
+            "next_steps": [
+                f"Purchase Pro at {STRIPE_LINK} ($19/mo, unlimited)",
+                "Restart the server to reset the free counter",
+                "Use --pro-key PROL_XXX to run in Pro mode"
+            ],
+            "calls_used": call_counter,
+            "limit": FREE_LIMIT,
+            "over_by": remaining
+        }
+    return None
+
 
 # ── Server Setup ──────────────────────────────────────────────────────────
 
@@ -197,6 +242,10 @@ async def list_tools() -> list[Tool]:
 async def call_tool(
     name: str, arguments: dict[str, Any]
 ) -> CallToolResult:
+    # Rate limit check
+    limit_check = check_rate_limit()
+    if limit_check:
+        return TextContent(type="text", text=str(limit_check))
     try:
         match name:
             case "get_company_facts":
