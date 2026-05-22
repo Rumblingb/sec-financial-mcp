@@ -14,7 +14,7 @@ Usage:
 
 from typing import Any
 import httpx
-from mcp.server import Server, NotificationOptions
+from mcp.server.lowlevel import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio
 from mcp.types import Tool, TextContent, CallToolResult
